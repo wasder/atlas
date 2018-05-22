@@ -1,0 +1,381 @@
+= Atlas
+
+== Include
+
+Maven dependencies for Atlas:
+
+[source, xml]
+----
+<dependency>
+    <groupId>io.qameta.atlas</groupId>
+    <artifactId>atlas-webdriver</artifactId>
+    <version>${atlas.version}</version>
+</dependency>
+----
+
+== Modern PageObject
+
+=== Interfaces
+
+For example, let's describe the page https://github.com/:
+
+WebPage - instances of this class will serve as top classes of your page objects hierarchy.
+
+[source, java]
+----
+public interface GithubPage extends WebPage {
+
+  @FindBy("//div[contains(@class, 'rounded-1')]//form[contains(@class, 'js-signup-form')]")
+  LoginForm loginForm();
+
+}
+----
+
+AtlasWebElement - is a parent interface for every web element you will be using in your tests
+
+[source, java]
+----
+public interface LoginForm extends AtlasWebElement {
+
+  @FindBy(".//input[@name='user[login]']")
+  AtlasWebElement username();
+
+  @FindBy(".//input[@name='user[email]']")
+  AtlasWebElement email();
+
+  @FindBy(".//input[@name='user[password]']")
+  AtlasWebElement password();
+
+}
+----
+
+=== Parameterized selector
+
+[source, java]
+----
+public interface Header extends AtlasWebElement {
+
+  @FindBy("//a[contains(text(), '{{ name }}')]")
+  AtlasWebElement link(@Param("name") String name);
+
+}
+----
+
+=== Defaults methods
+
+[source, java]
+----
+public interface LoginForm extends AtlasWebElement {
+
+  @FindBy(".//input[@name='user[login]']")
+  AtlasWebElement username();
+
+  @FindBy(".//input[@name='user[email]']")
+  AtlasWebElement email();
+
+  @FindBy(".//input[@name='user[password]']")
+  AtlasWebElement password();
+
+  @FindBy(".//button")
+  AtlasWebElement submit();
+
+  default void login(String login, String email, String password) {
+    username().sendKeys(login);
+    email().sendKeys(email);
+    password().sendKeys(password);
+    submit().click();
+  }
+
+}
+----
+
+=== Extending with inheritance
+
+Add `WithHeader` interface
+
+[source, java]
+----
+public interface WithHeader {
+
+  @FindBy("//header")
+  Header header();
+
+}
+----
+
+extends your `WebPage`
+
+[source, java]
+----
+public interface GithubPage extends WebPage, WithHeader {
+}
+
+public interface AuthGithubPage extends WebPage, WithHeader {
+}
+----
+
+after that you can use `Header` on each page:
+
+[source, java]
+----
+onGithubPage().header();
+onAuthGithubPage().header();
+----
+
+
+=== Collections
+
+ElementsCollection - an interface, which provides everything to work with a collection of AtlasWebElements.
+
+[source, java]
+----
+public interface GithubPage extends WebPage {
+
+  @FindBy("//div[contains(@class, 'rounded-1')]//form[contains(@class, 'js-signup-form')]")
+  LoginForm loginForm();
+
+  @FindBy("//div[contains(@class, 'apps-cluster')]//div")
+  ElementsCollection<AtlasWebElement> apps();
+
+  @FindBy("//article[contains(@class, 'Story')]")
+  ElementsCollection<Story> communityList();
+
+}
+----
+
+[source, java]
+----
+public interface Story extends AtlasWebElement {
+
+  @FindBy("//img")
+  LoginForm photo();
+
+  @FindBy("//h1")
+  LoginForm name();
+
+}
+----
+
+==== Filtering
+
+You can take collection of elements that satisfies the custom condition
+
+[source, java]
+----
+onGithubPage().communityList().filter(element -> element.photo().isDisplayed())
+                          .get(0).photo().click();
+----
+
+==== Converting
+
+You can convert collection of AtlasWebElements to a custom collection
+
+[source, java]
+----
+List<String> names = onGithubPage().communityList().convert(element -> element.name().getText());
+----
+
+== Checks
+
+Atlas have two different extension methods for checks.
+
+=== Should
+
+`should(Matcher matcher)` waits on a passed matcher and throwing `java.lang.AssertionError`
+if condition has not been satisfied.
+
+For `AtlasWebElement`
+
+[source, java]
+----
+onGithubPage().loginForm().username().should(displayed());
+----
+
+For `ElementsCollection`
+
+[source, java]
+----
+onGithubPage().communityList().should(hasSize(greaterThan(0)))
+                              .should(hasItem(containsString(%username%)));
+----
+
+=== WaitUntil
+
+`waitUntil(Matcher matcher)` waits on some condition in a passed matcher, throwing `java.lang.RuntimeException`
+if condition has not been satisfied.
+
+For `AtlasWebElement`
+
+[source, java]
+----
+onGithubPage().loginForm().username().waitUntil(displayed()) //waits for element to satisfy a condition
+                .sendKeys(login);
+----
+
+For `ElementsCollection`
+
+[source, java]
+----
+onGithubPage().communityList().waitUntil(hasSize(greaterThan(0)))
+                              .waitUntil(everyItem(displayed()));
+----
+
+
+== Extension
+
+You can override Atlas behaviour with `io.qameta.atlas.api.Extension`.
+This interface `io.qameta.atlas.api.Extension` has two methods which you must implement.
+
+=== Custom method
+
+For example consider custom `@FindBy` extension with addition logic. Create new annotation
+
+[source, java]
+----
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface CustomFindBy {
+    String value();
+}
+----
+
+Create new extension class with default implementation of `test(...)` and `invoke(...)` methods
+
+[source, java]
+----
+public class CustomFindByExtension extends Extension {
+
+    @Override
+    public boolean test(Method method) {
+        return false;
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        return null;
+    }
+}
+----
+
+In `test` method we will filter methods with `@CustomFindBy` annotation
+
+[source, java]
+----
+@Override
+public boolean test(Method method) {
+    return method.isAnnotationPresent(CustomFindBy.class)
+        && WebElement.class.isAssignableFrom(method.getReturnType());
+}
+----
+
+After that we should tell Atlas what to do with these methods.
+For example we want to wrap the annotation value in valid selector
+
+[source, java]
+----
+@Override
+public Object invoke(final Object proxy, final Method method, final Object[] args) {
+    assert proxy instanceof SearchContext;
+    assert method.isAnnotationPresent(CustomFindBy.class);
+
+    final String className = method.getAnnotation(CustomFindBy.class).value();
+    final String xpath = String.format(".//*[contains(@class, '%s')]", className);
+    final SearchContext context = (SearchContext) proxy;
+
+    return new Atlas()
+            .create(context.findElement(By.xpath(xpath)), method.getReturnType());
+}
+----
+
+Now we can use both annotations to find elements
+
+[source, java]
+----
+public interface GithubPage extends WebPage {
+
+  @FindBy("//*[contains(@class, 'd-lg-inline-block')]")
+  AtlasWebElement signUp();
+
+  // or
+
+  @CustomFindBy("d-lg-inline-block")
+  AtlasWebElement signUp();
+
+}
+----
+=== Custom element
+
+You can create element with a set of necessary methods. For example element Checkbox with custom `select()` action.
+First, create an interface for new element and custom method to interact with him:
+
+[source, java]
+----
+public interface MyBlock extends AtlasWebElement {
+
+  @FindBy("//label[contains(@class, 'checkbox')]")
+  Checkbox checkbox();
+
+}
+
+public interface Checkbox extends AtlasWebElement {
+
+  void select();
+
+}
+----
+
+Then create extension for `select()` action:
+
+[source, java]
+----
+public class SelectExtension implements Extension {
+
+    @Override
+    public boolean test(Method method) {
+        return false;
+    }
+
+    @Override
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        return null;
+    }
+}
+----
+
+Choose only a method with name `select`:
+
+[source, java]
+----
+@Override
+public boolean test(Method method) {
+    return method.getName().equals("select");
+}
+----
+
+And then apply our logic
+
+[source, java]
+----
+@Override
+public Object invoke(final Object proxy, final Method method, final Object[] args) {
+    assert proxy instanceof AtlasWebElement;
+
+    AtlasWebElement checkbox = ((AtlasWebElement) proxy);
+    if (!checkbox.getAttribute("class").contains("selected")) {
+        checkbox.click();
+    }
+
+    return proxy;
+}
+----
+
+That's all. Now you can use Checkbox element along with AtlasWebElement, but with additional action
+
+[source, java]
+----
+onMyPage().myBlock().checkbox().select();
+----
+
+== Listener
+
+// expected
