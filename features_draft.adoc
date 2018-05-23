@@ -378,4 +378,84 @@ onMyPage().myBlock().checkbox().select();
 
 == Listener
 
-// expected
+All method calls you can intercept using `io.qameta.atlas.api.Listener`
+
+[source, java]
+----
+public interface Listener {
+
+    void beforeMethodCall(Method method, Object... args);
+
+    void afterMethodCall(Method method, Object... args);
+
+    void onMethodReturn(Method method, Object[] args, Object returned);
+
+    void onMethodFailure(Method method, Object[] args, Throwable throwable);
+
+}
+----
+
+=== AtlasLogger
+
+Consider an implementation for Atlas logger in the example of a simple test
+
+[source, java]
+----
+@Test
+public void simpleTest() {
+    when(atlasWebElement.isDisplayed()).thenReturn(false);
+    atlasWebElement.should(displayed());
+}
+----
+
+For this create new class and print the method name in each stage:
+
+[source, java]
+----
+public class AtlasLogger implements Listener {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(ListenerNotifier.class);
+
+    @Override
+    public void beforeMethodCall(Method method, Object... args) {
+        LOGGER.info(getOffset() + " -> BEFORE " + method.getName());
+    }
+
+    @Override
+    public void afterMethodCall(Method method, Object... args) {
+        LOGGER.info(getOffset() + " <- AFTER ");
+    }
+
+    @Override
+    public void onMethodReturn(Method method, Object[] args, Object returned) {
+        LOGGER.info(getOffset() + " <- OK ");
+    }
+
+    @Override
+    public void onMethodFailure(Method method, Object[] args, Throwable throwable) {
+        LOGGER.info(getOffset() + " <- FAILURE ");
+    }
+
+    private String getOffset() {
+        return new String(new char[names.size() == 0 ? 0 : names.size() - 1]).replaceAll("\0", "   ");
+    }
+}
+----
+
+In this case you will receive all methods which were executed:
+
+[source, text]
+----
+-> BEFORE should
+    -> BEFORE isDisplayed
+    <- OK
+    <- AFTER isDisplayed
+    -> BEFORE toString
+    <- OK
+    <- AFTER toString
+<- FAILURE
+<- AFTER should
+----
+
+Sometimes it is not convenient, because many of them are redundant in the test scenario (like isDisplayed or toString),
+and you have to filter them further for your needs.
