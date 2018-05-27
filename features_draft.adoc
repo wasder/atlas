@@ -2,7 +2,7 @@
 
 == Include
 
-Maven dependencies for Atlas:
+Maven dependency for Atlas:
 
 [source, xml]
 ----
@@ -49,7 +49,32 @@ public interface LoginForm extends AtlasWebElement {
 }
 ----
 
+Using annotation `@Name`, you can add the display name of an element. By default will be used method name.
+Sometimes it is important in logging the test scenario.
+
+[source, java]
+----
+public interface LoginForm extends AtlasWebElement {
+
+  @Name("Login")
+  @FindBy(".//input[@name='user[login]']")
+  AtlasWebElement username();
+
+  @Name("Email")
+  @FindBy(".//input[@name='user[email]']")
+  AtlasWebElement email();
+
+  @Name("Password")
+  @FindBy(".//input[@name='user[password]']")
+  AtlasWebElement password();
+
+}
+----
+
 === Parameterized selector
+
+For elements with the same type of selectors you can use `parameterized` selector.
+This is the main feature and a new idea for development PageObject
 
 [source, java]
 ----
@@ -61,7 +86,22 @@ public interface Header extends AtlasWebElement {
 }
 ----
 
+Also, this parameter can be used in the element name
+
+[source, java]
+----
+public interface Header extends AtlasWebElement {
+
+  @Name("Link «{{ name }}»")
+  @FindBy("//a[contains(text(), '{{ name }}')]")
+  AtlasWebElement link(@Param("name") String name);
+
+}
+----
+
 === Defaults methods
+
+In Java 8 allow you use instead default implementation
 
 [source, java]
 ----
@@ -91,7 +131,8 @@ public interface LoginForm extends AtlasWebElement {
 
 === Extending with inheritance
 
-Add `WithHeader` interface
+Java has multiple inheritance of interfaces. You can use this to make element `templates`
+For example, add `WithHeader` interface
 
 [source, java]
 ----
