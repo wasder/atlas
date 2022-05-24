@@ -1,8 +1,5 @@
 description = 'Atlas Github Sample'
 
-quality {
-    enabled = false
-}
 
 repositories {
     maven { url 'https://jitpack.io' }

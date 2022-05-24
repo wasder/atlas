@@ -25,6 +25,11 @@ public class EmptyRetryer implements Retryer {
     }
 
     @Override
+    public boolean shouldRetry(long start, long customTimeout, Throwable e) {
+        return shouldRetry(start, TimeUnit.SECONDS.toMillis(customTimeout), polling, ignoring, e);
+    }
+
+    @Override
     public void timeoutInSeconds(final int seconds) {
         this.timeout = TimeUnit.SECONDS.toMillis(seconds);
     }

@@ -9,6 +9,8 @@ public interface Retryer {
 
     boolean shouldRetry(long start, Throwable e) throws Throwable;
 
+    boolean shouldRetry(long start, long customTimeout, Throwable e) throws Throwable;
+
     default boolean shouldRetry(final Long start, final Long timeout, final Long polling,
                                 final List<Class<? extends Throwable>> ignoring, final Throwable e) {
         final long current = System.currentTimeMillis();

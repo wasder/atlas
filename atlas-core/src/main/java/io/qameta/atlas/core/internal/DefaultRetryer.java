@@ -37,7 +37,6 @@ public class DefaultRetryer implements Retryer {
         this.timeout = millis;
     }
 
-    @Override
     public void timeoutInSeconds(final int seconds) {
         this.timeout = TimeUnit.SECONDS.toMillis(seconds);
     }
@@ -49,5 +48,10 @@ public class DefaultRetryer implements Retryer {
     @Override
     public boolean shouldRetry(final long start, final Throwable e) {
         return shouldRetry(start, timeout, polling, ignoring, e);
+    }
+
+    @Override
+    public boolean shouldRetry(long start, long customTimeout, Throwable e) {
+        return shouldRetry(start, TimeUnit.SECONDS.toMillis(customTimeout), polling, ignoring, e);
     }
 }
