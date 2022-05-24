@@ -1,19 +1,3 @@
-import io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension
-
-buildscript {
-    repositories {
-        mavenLocal()
-        mavenCentral()
-    }
-
-}
-
-val gradleScriptDir by extra("${rootProject.projectDir}/gradle")
-
-tasks.withType(Wrapper::class) {
-    gradleVersion = "6.0.1"
-}
-
 plugins {
     java
     id("io.spring.dependency-management") version "1.0.8.RELEASE"
@@ -24,21 +8,18 @@ release {
     tagTemplate = "\${version}"
 }
 
-configure(listOf(rootProject)) {
-    description = "Atlas"
-    group = "io.qameta.atlas"
-}
+description = "Atlas"
 
-val afterReleaseBuild by tasks.existing
-
-configure(subprojects) {
+allprojects {
     group = "io.qameta.atlas"
     version = version
+}
 
+configure(subprojects) {
     apply(plugin = "java")
     apply(plugin = "java-library")
+    apply(plugin = "maven-publish")
     apply(plugin = "io.spring.dependency-management")
-
 
     java {
         sourceCompatibility = JavaVersion.VERSION_18
@@ -63,11 +44,7 @@ configure(subprojects) {
         (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
     }
 
-    artifacts.add("archives", sourceJar)
-    artifacts.add("archives", javadocJar)
-
-
-    configure<DependencyManagementExtension> {
+    dependencyManagement {
         dependencies {
             dependency("org.apache.commons:commons-lang3:3.7")
 
