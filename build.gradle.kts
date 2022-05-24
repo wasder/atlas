@@ -40,6 +40,19 @@ configure(subprojects) {
         archiveClassifier.set("javadoc")
     }
 
+    configure<PublishingExtension> {
+        publications.create<MavenPublication>(project.name) {
+            groupId = "io.qameta.atlas"
+            artifactId = project.name
+            version = version
+            pom.packaging = "jar"
+            artifact(sourceJar)
+        }
+        repositories {
+            mavenLocal()
+        }
+    }
+
     tasks.withType(Javadoc::class) {
         (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
     }
