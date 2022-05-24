@@ -43,10 +43,17 @@ configure(subprojects) {
     configure<PublishingExtension> {
         publications.create<MavenPublication>(project.name) {
             groupId = "io.qameta.atlas"
-            artifactId = project.name
             version = version
             pom.packaging = "jar"
-            artifact(sourceJar)
+            from(components["java"])
+            versionMapping {
+                usage("java-api") {
+                    fromResolutionOf("runtimeClasspath")
+                }
+                usage("java-runtime") {
+                    fromResolutionResult()
+                }
+            }
         }
         repositories {
             mavenLocal()
